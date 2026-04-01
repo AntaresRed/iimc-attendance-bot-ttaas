@@ -10,7 +10,7 @@ const db = require('./db/database');
 const bot = require('./bot');
 const scheduler = require('./features/scheduler');
 const broadcast = require('./features/broadcast');
-const { createDashboardServer, setBotStatus } = require('./dashboard/server');
+const { createDashboardServer, setBotStatus, setBotActions } = require('./dashboard/server');
 const mq = require('./utils/messageQueue');
 
 const SESSION_DIR = process.env.SESSION_DIR || './sessions';
@@ -157,6 +157,7 @@ async function connectToWhatsApp() {
 
     if (connection === 'close') {
       if (_isShuttingDown) return; // clean shutdown in progress — do nothing
+      setBotActions({ disconnect: null }); // socket gone — clear action
 
       setBotStatus({ connected: false, qrPending: false });
       const statusCode = lastDisconnect?.error?.output?.statusCode;
@@ -191,6 +192,13 @@ async function connectToWhatsApp() {
       console.log('[WA] Connected and ready.');
       const phone = sock.user?.id?.split(':')[0] || null;
       setBotStatus({ connected: true, qrPending: false, phoneNumber: phone, connectedAt: new Date().toISOString() });
+      // Register logout callback so the dashboard can disconnect the bot
+      setBotActions({
+        disconnect: async () => {
+          console.log('[WA] Disconnect requested from dashboard — logging out...');
+          await sock.logout();
+        }
+      });
       scheduler.startScheduler();
     }
   });

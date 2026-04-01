@@ -707,6 +707,22 @@ async function loadBot(){
       </p>
     </div>
   </div>`;
+  // Disconnect button — only shown when connected
+  if(s.connected){
+    const discBtn=document.createElement('button');
+    discBtn.className='btn btn-danger';
+    discBtn.style='margin-top:16px';
+    discBtn.textContent='⏏ Disconnect Bot';
+    discBtn.onclick=()=>modal.confirm(
+      'This will log the bot out of WhatsApp and remove it from your Linked Devices list.<br><br>You will need to scan a new QR code to reconnect. Continue?',
+      async()=>{
+        const r=await api.post('/api/bot/disconnect');
+        if(r){toast('Bot disconnected. Scan QR to reconnect.','info');setTimeout(()=>loadBot(),2500);}
+      }
+    );
+    c.querySelector('.bot-status-hero').appendChild(discBtn);
+  }
+
   // Auto-refresh if QR is pending so the QR stays fresh
   if(s.qrPending && !window._botRefreshTimer){
     window._botRefreshTimer=setTimeout(()=>{window._botRefreshTimer=null;if(S.section==='bot')loadBot();},30000);

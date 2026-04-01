@@ -10,8 +10,10 @@ const PASSWORD = process.env.DASHBOARD_PASSWORD || 'Antares@2265';
 const SECRET   = process.env.SESSION_SECRET     || 'att-dash-secret-fallback';
 
 // ─── Shared bot status (updated from index.js) ───────────────────────────────
-let _botStatus = { connected: false, qrPending: false, phoneNumber: null, connectedAt: null };
-function setBotStatus(update) { _botStatus = { ..._botStatus, ...update }; }
+let _botStatus  = { connected: false, qrPending: false, phoneNumber: null, connectedAt: null };
+let _botActions = { disconnect: null };
+function setBotStatus(update)  { _botStatus  = { ..._botStatus,  ...update }; }
+function setBotActions(actions){ _botActions = { ..._botActions, ...actions }; }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const D = () => db.getDb();
@@ -50,6 +52,19 @@ function createDashboardServer() {
 
   // ── Bot status ─────────────────────────────────────────────────────────────
   app.get('/api/bot/status', requireAuth, (_req, res) => res.json(_botStatus));
+
+  // ── Bot disconnect (logout from WhatsApp) ──────────────────────────────────
+  app.post('/api/bot/disconnect', requireAuth, async (_req, res) => {
+    if (!_botActions.disconnect) {
+      return res.status(503).json({ error: 'Bot is not connected' });
+    }
+    try {
+      await _botActions.disconnect();
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
 
   // ── Courses list (for autocomplete) ───────────────────────────────────────
   const { VALID_COURSES } = require('../utils/ocr');
@@ -176,4 +191,4 @@ function createDashboardServer() {
   return app;
 }
 
-module.exports = { createDashboardServer, setBotStatus };
+module.exports = { createDashboardServer, setBotStatus, setBotActions };

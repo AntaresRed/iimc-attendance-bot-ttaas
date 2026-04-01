@@ -181,8 +181,8 @@ async function connectToWhatsApp() {
           }
         } catch (_) {}
         setBotStatus({ connected: false, qrPending: false, phoneNumber: null });
-        console.log('[WA] Sessions cleared. Run npm start to scan a new QR.');
-        process.exit(0); // exit 0 so Railway/PM2 restarts and shows QR
+        console.log('[WA] Sessions cleared. Generating new QR code...');
+        setTimeout(() => connectToWhatsApp(), 3000);
       } else {
         console.log('[WA] Max reconnect attempts reached. Restarting process...');
         process.exit(1); // let the process manager restart us

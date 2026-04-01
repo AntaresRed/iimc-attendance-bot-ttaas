@@ -5,7 +5,7 @@ const session  = require('express-session');
 const path     = require('path');
 const db       = require('../db/database');
 
-const PORT     = parseInt(process.env.DASHBOARD_PORT     || '4000', 10);
+const PORT     = parseInt(process.env.PORT || process.env.DASHBOARD_PORT || '4000', 10);
 const PASSWORD = process.env.DASHBOARD_PASSWORD || 'Antares@2265';
 const SECRET   = process.env.SESSION_SECRET     || 'att-dash-secret-fallback';
 

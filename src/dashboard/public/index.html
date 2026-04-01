@@ -246,6 +246,7 @@ tbody td{padding:10px 14px;color:var(--text1);vertical-align:middle;white-space:
       <button class="nav-item" data-section="overrides"><span class="nav-icon">🔄</span>Overrides</button>
       <button class="nav-item" data-section="audit"><span class="nav-icon">📋</span>Audit Log</button>
       <button class="nav-item" data-section="bot"><span class="nav-icon">🤖</span>Bot Status</button>
+      <button class="nav-item" data-section="guide"><span class="nav-icon">📖</span>Guide</button>
     </nav>
     <div class="sidebar-bottom">
       <button class="btn-logout" id="logout-btn"><span>⏻</span> Logout</button>
@@ -267,6 +268,7 @@ tbody td{padding:10px 14px;color:var(--text1);vertical-align:middle;white-space:
       <div id="page-overrides" class="page" style="display:none"></div>
       <div id="page-audit" class="page" style="display:none"></div>
       <div id="page-bot" class="page" style="display:none"></div>
+      <div id="page-guide" class="page" style="display:none"></div>
     </main>
   </div>
 </div>
@@ -341,7 +343,7 @@ document.getElementById('modal-save-btn').onclick=async()=>{
 
 // ────────── Nav ────────────────────────────────────────────────────────────
 const PAGE_TITLES={overview:'Overview',users:'Users',timetables:'Timetables',
-  attendance:'Attendance Logs',overrides:'Schedule Overrides',audit:'Audit Log',bot:'Bot Status'};
+  attendance:'Attendance Logs',overrides:'Schedule Overrides',audit:'Audit Log',bot:'Bot Status',guide:'System Guide'};
 
 function navigate(sec){
   document.querySelectorAll('.page').forEach(p=>p.style.display='none');
@@ -788,7 +790,40 @@ async function loadBot(){
   }
 }
 
+// ────────── Guide page ─────────────────────────────────────────────────────
+function loadGuide() {
+  const c = el('page-guide');
+  c.innerHTML = `
+    <div class="card" style="max-width:800px; padding:30px">
+      <div class="card-title" style="font-size:1.3rem; margin-bottom:20px">📖 Admin Dashboard Guide</div>
+      <div style="font-size:0.95rem; line-height:1.7; color:var(--text2)">
+        <h4 style="color:var(--text1); margin-top:20px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">◉</span> Overview</h4>
+        <p>A high-level view of system health, active users, today's schedule, and overall attendance statistics. The bar chart compares present vs absent trends across all subjects.</p>
+        
+        <h4 style="color:var(--text1); margin-top:24px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">👥</span> Users</h4>
+        <p>Manage all students registered with the bot. You can view their individual attendance progress, change their section, assign <strong>CR</strong> or <strong>Superadmin</strong> roles, or delete users entirely.</p>
+        
+        <h4 style="color:var(--text1); margin-top:24px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">📅</span> Timetables</h4>
+        <p>View the active timetable for any student. The bot automatically creates absent records exactly 1 minute before these scheduled class times and sends a WhatsApp prompt to the student.</p>
+        
+        <h4 style="color:var(--text1); margin-top:24px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">✅</span> Attendance Logs</h4>
+        <p>A detailed view of every single class session recorded for every user. You can manually edit a student's status (Present/Absent/Cancelled/Rescheduled), overriding what they replied on WhatsApp.</p>
+        
+        <h4 style="color:var(--text1); margin-top:24px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">🔄</span> Schedule Overrides</h4>
+        <p>View active class cancellations or rescheduled sessions created by CRs and Admins through WhatsApp. These overrides ensure the bot automatically suppresses prompts for cancelled classes.</p>
+        
+        <h4 style="color:var(--text1); margin-top:24px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">📋</span> Audit Log</h4>
+        <p>A secure, tamper-proof history of manual edits. If you or another admin change a student's attendance from this Dashboard, it is permanently logged here to prevent fraudulent or accidental changes.</p>
+        
+        <h4 style="color:var(--text1); margin-top:24px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">🤖</span> Bot Status & Backups</h4>
+        <p>Check if the WhatsApp bot is actively connected. Use the QR code to sign the bot in. You can securely download a compressed snapshot of the database or automatically push backups to GitHub to prevent data loss.</p>
+      </div>
+    </div>
+  `;
+}
+
 // ────────── Bot badge polling ──────────────────────────────────────────────
+
 async function pollBotStatus(){
   try{
     const s=await api.get('/api/bot/status');if(!s)return;
@@ -800,7 +835,7 @@ async function pollBotStatus(){
 
 // ────────── Page router ────────────────────────────────────────────────────
 const pages={overview:loadOverview,users:loadUsers,timetables:loadTimetables,
-  attendance:()=>loadAttendance(true),overrides:loadOverrides,audit:loadAudit,bot:loadBot};
+  attendance:()=>loadAttendance(true),overrides:loadOverrides,audit:loadAudit,bot:loadBot,guide:loadGuide};
 
 // ────────── Auth ───────────────────────────────────────────────────────────
 function showLogin(){el('login-screen').style.display='flex';el('app').style.display='none';}

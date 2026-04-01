@@ -86,7 +86,10 @@ async function processMessage(user, msgInfo, sendFn) {
           }
           timetable.saveParsedTimetable(user.id, entries);
           db.clearConvState(phone);
-          await sendFn(jid, `✅ Your personal timetable has been successfully saved! You'll now receive class reminders based on this schedule.`);
+          const weekData = timetable.getWeeklySchedule(user.id);
+          const msg = `✅ Your personal timetable has been successfully saved! You'll now receive class reminders based on this schedule.\n\n` +
+                      formatter.formatWeeklySchedule(weekData);
+          await sendFn(jid, msg);
       } else {
           db.clearConvState(phone);
           await sendFn(jid, `❌ Timetable upload cancelled.`);

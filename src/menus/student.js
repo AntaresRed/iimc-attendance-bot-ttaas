@@ -8,9 +8,9 @@ const formatter = require('../utils/formatter');
 const ocr = require('../utils/ocr');
 const fs = require('fs');
 const path = require('path');
-const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 
 async function downloadMedia(msgInfo) {
+  const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
   const stream = await downloadContentFromMessage(msgInfo.imageMessage, 'image');
   let buffer = Buffer.from([]);
   for await(const chunk of stream) {

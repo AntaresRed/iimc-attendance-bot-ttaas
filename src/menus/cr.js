@@ -10,9 +10,8 @@ const { today, parseClassDateTime } = require('../utils/timeUtils');
 const broadcast = require('../features/broadcast');
 const timetable = require('../features/timetable');
 
-const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
-
 async function downloadMedia(msgInfo) {
+  const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
   const stream = await downloadContentFromMessage(msgInfo.imageMessage, 'image');
   let buffer = Buffer.from([]);
   for await(const chunk of stream) {

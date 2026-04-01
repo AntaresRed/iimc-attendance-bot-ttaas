@@ -66,6 +66,33 @@ function createDashboardServer() {
     }
   });
 
+  // ── Backup ─────────────────────────────────────────────────────────────────
+  // Download: streams a compressed SQLite snapshot directly to the browser
+  app.get('/api/backup/download', requireAuth, async (_req, res) => {
+    try {
+      const { createBackupBuffer } = require('../features/backup');
+      const buffer = await createBackupBuffer();
+      const date   = new Date().toISOString().slice(0, 10);
+      res.setHeader('Content-Type', 'application/gzip');
+      res.setHeader('Content-Disposition', `attachment; filename="attendance-${date}.db.gz"`);
+      res.setHeader('Content-Length', buffer.length);
+      res.send(buffer);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Push: triggers an immediate backup to GitHub (requires env vars)
+  app.post('/api/backup/push', requireAuth, async (_req, res) => {
+    try {
+      const { runBackup } = require('../features/backup');
+      const result = await runBackup();
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // ── Courses list (for autocomplete) ───────────────────────────────────────
   const { VALID_COURSES } = require('../utils/ocr');
   app.get('/api/courses', requireAuth, (_req, res) => res.json(VALID_COURSES));

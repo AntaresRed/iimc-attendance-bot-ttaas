@@ -707,7 +707,35 @@ async function loadBot(){
       </p>
     </div>
   </div>`;
-  // Disconnect button — only shown when connected
+  c.innerHTML+=`
+  <div class="card" style="margin-top:20px">
+    <div class="card-title">🗄️ Database Backup</div>
+    <p style="color:var(--text2);font-size:.875rem;margin-bottom:16px;line-height:1.6">
+      Download a compressed snapshot of the entire database (users, timetables, attendance logs).
+      Store it somewhere safe — you can restore from it if data is ever lost.<br>
+      <span style="color:var(--text3);font-size:.8rem">Auto-backup runs daily at 02:00 IST → GitHub (if configured).</span>
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a href="/api/backup/download" class="btn btn-primary" download>⬇ Download Backup</a>
+      <button class="btn btn-ghost" id="push-backup-btn">☁ Push to GitHub Now</button>
+    </div>
+    <div id="backup-result" style="margin-top:12px;font-size:.82rem;color:var(--text2)"></div>
+  </div>`;
+
+  el('push-backup-btn').onclick=async()=>{
+    el('push-backup-btn').disabled=true;
+    el('push-backup-btn').textContent='Pushing…';
+    el('backup-result').textContent='';
+    const r=await api.post('/api/backup/push');
+    el('push-backup-btn').disabled=false;
+    el('push-backup-btn').textContent='☁ Push to GitHub Now';
+    if(r&&r.ok){
+      el('backup-result').innerHTML=`✅ Pushed <strong>${r.filename}</strong> (${r.sizeKb} KB)${r.url?` — <a href="${r.url}" target="_blank" style="color:var(--accent)">view on GitHub</a>`:''}`;
+    } else {
+      el('backup-result').innerHTML=`❌ ${r?.error||'Unknown error — check BACKUP_GITHUB_TOKEN and BACKUP_GITHUB_REPO in Railway variables.'}`;
+    }
+  };
+
   if(s.connected){
     const discBtn=document.createElement('button');
     discBtn.className='btn btn-danger';

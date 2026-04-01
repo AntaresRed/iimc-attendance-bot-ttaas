@@ -1,35 +1,21 @@
 'use strict';
 
-const cron     = require('node-cron');
-const db       = require('../db/database');
-const timetable = require('./timetable');
+const cron       = require('node-cron');
+const db         = require('../db/database');
+const timetable  = require('./timetable');
 const attendance = require('./attendance');
-const { toDateString, dayOfWeekOf, timeToMinutes } = require('../utils/timeUtils');
-const { attendancePromptVaried } = require('../utils/formatter');
+const backup     = require('./backup');
+const { toDateString, timeToMinutes } = require('../utils/timeUtils');
+const { attendancePromptVaried }      = require('../utils/formatter');
 
 let _sendMessageFn = null;
 
-/**
- * Called from index.js to inject the Baileys send function.
- * @param {Function} fn - async (jid, message) => void
- */
-function setSendFn(fn) {
-  _sendMessageFn = fn;
-}
+function setSendFn(fn) { _sendMessageFn = fn; }
+async function send(jid, text) { if (_sendMessageFn) await _sendMessageFn(jid, text); }
 
 /**
- * Sends a WhatsApp message.
- */
-async function send(jid, text) {
-  if (_sendMessageFn) await _sendMessageFn(jid, text);
-}
-
-/**
- * Determines which classes start in the next minute and:
- *  1. Initializes absent rows for all class students.
- *  2. Sends a prompt to each student's WhatsApp.
- *
- * This job runs every minute.
+ * Checks which classes start in the next minute and fires attendance prompts.
+ * Runs every minute via cron.
  */
 async function checkAndFireClassPrompts() {
   const nowDate = new Date();
@@ -38,7 +24,6 @@ async function checkAndFireClassPrompts() {
 
   const users = db.getAllActiveUsers();
   for (const user of users) {
-    // Skip users with no timetable (#30 — avoids pointless queries for empty accounts)
     if (db.getScheduleEntryCount(user.id) === 0) continue;
 
     let sessions;
@@ -54,40 +39,35 @@ async function checkAndFireClassPrompts() {
       if (Math.abs(nowMin - startMin) > 1) continue;
 
       try {
-        // Init absent row — if user was deleted between getAllActiveUsers() and here,
-        // this will throw a FK error which we catch and skip (#30)
-        attendance.initSessionAttendance(user.id, {
-          ...session,
-          session_date: dateStr,
-        });
-
-        // Send prompt — wrap individually so one bad JID doesn't stop others (#31)
-        // Personalised varied message — different text per user to avoid
-        // WhatsApp content-hash spam detection on bulk sends.
+        attendance.initSessionAttendance(user.id, { ...session, session_date: dateStr });
         const msg = attendancePromptVaried(user.name, session.subject, session.start_time, session.end_time);
         await send(user.phone, msg);
       } catch (err) {
         console.error(`[Scheduler] Error for user ${user.id} (${user.phone}):`, err.message);
-        // Continue to next session / next user — never crash the whole loop
       }
     }
   }
 }
 
 /**
- * Starts the cron job that fires every minute.
- * Only starts if there is at least one section with a linked group.
+ * Starts all cron jobs:
+ *  - Every minute : fire class attendance prompts
+ *  - Daily 02:00  : compressed SQLite backup → GitHub
  */
 function startScheduler() {
-  // '* * * * *' = every minute
-  const job = cron.schedule('* * * * *', () => {
+  cron.schedule('* * * * *', () => {
     checkAndFireClassPrompts().catch(err =>
-      console.error('[Scheduler] Error:', err.message),
-    );
+      console.error('[Scheduler] Error:', err.message));
+  }, { timezone: process.env.TZ || 'Asia/Kolkata' });
+
+  // Daily backup at 2 AM IST — quiet window, minimal load
+  cron.schedule('0 2 * * *', () => {
+    backup.runBackup().catch(err =>
+      console.error('[Backup] Cron error:', err.message));
   }, { timezone: process.env.TZ || 'Asia/Kolkata' });
 
   console.log('[Scheduler] Started. Watching for class windows...');
-  return job;
+  console.log('[Backup]    Daily backup scheduled at 02:00 IST.');
 }
 
 module.exports = { startScheduler, setSendFn, checkAndFireClassPrompts };

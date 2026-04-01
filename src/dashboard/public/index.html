@@ -718,13 +718,44 @@ async function loadBot(){
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <a href="/api/backup/download" class="btn btn-primary" download>⬇ Download Backup</a>
       <button class="btn btn-ghost" id="push-backup-btn">☁ Push to GitHub Now</button>
+      <button class="btn btn-ghost" onclick="el('restore-file').click()">📂 Restore from File</button>
+      <input type="file" id="restore-file" accept=".gz" style="display:none">
     </div>
     <div id="backup-result" style="margin-top:12px;font-size:.82rem;color:var(--text2)"></div>
   </div>`;
 
+  el('restore-file').onchange = async(e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    modal.confirm(
+      `<strong>⚠️ DANGER:</strong> Restoring this backup will permanently overwrite your live database.<br><br>File: <code>${file.name}</code><br>Are you sure?`,
+      async () => {
+        el('backup-result').innerHTML = '⏳ Restoring database and restarting server... please wait.';
+        try {
+          const res = await fetch('/api/backup/restore', {
+            method: 'POST',
+            body: file,
+            headers: { 'Content-Type': 'application/gzip' }
+          });
+          const json = await res.json();
+          if (res.ok) {
+            el('backup-result').innerHTML = '✅ Restored! Automatically refreshing in 3 seconds...';
+            setTimeout(() => window.location.reload(), 3000);
+          } else {
+            el('backup-result').innerHTML = `❌ Failed: ${json.error}`;
+          }
+        } catch(err) {
+          el('backup-result').innerHTML = `❌ Connection lost (server is likely restarting). Try refreshing.`;
+        }
+      }
+    );
+    e.target.value = ''; // clear input so the same file can be picked again
+  };
+
   el('push-backup-btn').onclick=async()=>{
     el('push-backup-btn').disabled=true;
     el('push-backup-btn').textContent='Pushing…';
+
     el('backup-result').textContent='';
     const r=await api.post('/api/backup/push');
     el('push-backup-btn').disabled=false;

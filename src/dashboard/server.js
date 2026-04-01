@@ -93,6 +93,18 @@ function createDashboardServer() {
     }
   });
 
+  // Restore: takes a .db.gz upload, overwrites the DB, and restarts the backend smoothly
+  app.post('/api/backup/restore', requireAuth, express.raw({ type: 'application/gzip', limit: '20mb' }), async (req, res) => {
+    try {
+      const { restoreBackup } = require('../features/backup');
+      if (!req.body || req.body.length === 0) return res.status(400).json({ error: 'No file data received' });
+      await restoreBackup(req.body);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // ── Courses list (for autocomplete) ───────────────────────────────────────
   const { VALID_COURSES } = require('../utils/ocr');
   app.get('/api/courses', requireAuth, (_req, res) => res.json(VALID_COURSES));

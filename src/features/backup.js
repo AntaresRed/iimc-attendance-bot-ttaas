@@ -21,6 +21,7 @@ const { promisify } = require('util');
 const db   = require('../db/database');
 
 const gzip    = promisify(zlib.gzip);
+const gunzip  = promisify(zlib.gunzip);
 const DB_PATH = process.env.DB_PATH || './data/attendance.db';
 
 // ── Core: create an in-memory compressed backup ───────────────────────────────
@@ -132,4 +133,18 @@ async function runBackup() {
   }
 }
 
-module.exports = { createBackupBuffer, runBackup };
+// ── Restore: Replace live DB and restart ──────────────────────────────────────
+async function restoreBackup(compressedBuffer) {
+  console.log('[Backup] Starting database restore...');
+  const rawDb = await gunzip(compressedBuffer);
+
+  // Close live connection cleanly
+  try { db.getDb().close(); } catch (_) { }
+
+  // Overwrite the file and force a restart
+  fs.writeFileSync(path.resolve(DB_PATH), rawDb);
+  console.log('[Backup] Database file overwritten. Restarting app to reload...');
+  setTimeout(() => process.exit(0), 1500); // 1.5s delay to let HTTP response complete
+}
+
+module.exports = { createBackupBuffer, runBackup, restoreBackup };

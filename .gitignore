@@ -1,0 +1,27 @@
+# ─── Dependencies ──────────────────────────────────────────────────────────────
+node_modules/
+
+# ─── Environment & Secrets ─────────────────────────────────────────────────────
+# NEVER commit .env — use Railway / hosting environment variables instead
+.env
+
+# ─── Runtime Data (must be on a persistent Volume, not in the repo) ───────────
+data/
+sessions/
+uploads/
+
+# ─── Tesseract trained data (large binary — download on deploy) ────────────────
+*.traineddata
+
+# ─── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── OS & Editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ─── Temp OCR processed images ─────────────────────────────────────────────────
+uploads/*_processed.*

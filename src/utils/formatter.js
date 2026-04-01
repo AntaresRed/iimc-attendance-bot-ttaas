@@ -326,12 +326,16 @@ function formatOCRPreview(entries) {
       `Try again or enter the schedule manually.`
     );
   }
+  const sortedEntries = [...entries].sort((a, b) => {
+    if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
+    return a.start_time.localeCompare(b.start_time);
+  });
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const lines = entries.map(e =>
+  const lines = sortedEntries.map(e =>
     `  ${dayNames[e.day_of_week]}  ${formatTimeDisplay(e.start_time)}–${formatTimeDisplay(e.end_time)}  *${e.subject}*`,
   );
   return (
-    `🔍 *Parsed Timetable (${entries.length} slots)*\n\n` +
+    `🔍 *Parsed Timetable (${sortedEntries.length} slots)*\n\n` +
     lines.join('\n') +
     `\n\nIs this correct?\n` +
     `✅ Reply *confirm* to save\n` +

@@ -144,8 +144,12 @@ function getClassableSessionsForDate(userId, dateStr) {
  * e.g. "1. Mon 9:00 AM – Physics"
  */
 function formatEntryList(entries) {
+  const sortedEntries = [...entries].sort((a, b) => {
+    if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
+    return a.start_time.localeCompare(b.start_time);
+  });
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  return entries.map((e, i) =>
+  return sortedEntries.map((e, i) =>
     `${i + 1}. ${dayNames[e.day_of_week]}  ${formatTimeDisplay(e.start_time)}–${formatTimeDisplay(e.end_time)}  ${e.subject}`,
   ).join('\n');
 }

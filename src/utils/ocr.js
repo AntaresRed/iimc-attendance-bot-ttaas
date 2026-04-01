@@ -116,22 +116,29 @@ function add90Mins(startStr) {
 
 // ── STRATEGY 1: Google Gemini Vision ─────────────────────────────────────────
 
-const GEMINI_PROMPT = `You are parsing a weekly class timetable image for an Indian management school.
+function buildGeminiPrompt() {
+  const courseList = VALID_COURSES.map((c, i) => `${i + 1}. ${c}`).join('\n');
+  return `You are parsing a weekly class timetable image for an Indian management institute (IIM Calcutta).
 Extract every class session visible in the grid.
+
+Here is the MASTER LIST of valid course names for this batch. Match each visible subject to the closest entry:
+${courseList}
 
 Return ONLY a valid JSON array (no markdown, no explanation) where each element is:
 {
-  "subject": "<exact subject name as it appears in the image>",
+  "subject": "<exact course name from the master list above>",
   "day": "<full English day name, e.g. Monday>",
   "start_time": "<HH:MM in 24-hour format>",
   "end_time": "<HH:MM in 24-hour format>"
 }
 
 Rules:
+- ALWAYS map the subject to the closest matching name from the master list above, even if the image shows an abbreviation, partial name, or different capitalization.
 - Use 24-hour time (e.g. 14:30 not 2:30 PM).
 - If end_time is not visible, add 90 minutes to start_time.
 - Only include cells that have a subject name; skip empty cells.
 - Return [] if no sessions are found.`;
+}
 
 async function parseWithGemini(imagePath) {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -145,7 +152,7 @@ async function parseWithGemini(imagePath) {
     contents: [{
       parts: [
         { inlineData: { mimeType, data: base64Image } },
-        { text: GEMINI_PROMPT },
+        { text: buildGeminiPrompt() },
       ],
     }],
     generationConfig: { temperature: 0, maxOutputTokens: 2048 },

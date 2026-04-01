@@ -371,7 +371,7 @@ function timeAgo(ts){
   if(d<60)return'just now'; if(d<3600)return`${Math.floor(d/60)}m ago`;
   if(d<86400)return`${Math.floor(d/3600)}h ago`; return`${Math.floor(d/86400)}d ago`;
 }
-function greeting(){const h=new Date().getHours();return h<12?'Good morning':'h<17?Good afternoon':'Good evening';}
+function greeting(){const h=new Date().getHours();return h<12?'Good morning':h<17?'Good afternoon':'Good evening';}
 function el(id){return document.getElementById(id);}
 function val(id){return el(id).value.trim();}
 function sval(id){return el(id).value;}

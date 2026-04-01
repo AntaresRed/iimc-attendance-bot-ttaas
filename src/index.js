@@ -1,12 +1,5 @@
 'use strict';
 
-const {
-  default: makeWASocket,
-  useMultiFileAuthState,
-  DisconnectReason,
-  Browsers,
-  fetchLatestBaileysVersion
-} = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 const path = require('path');
@@ -54,6 +47,14 @@ process.on('SIGBREAK',() => gracefulShutdown('SIGBREAK')); // Windows Ctrl+Break
 
 async function connectToWhatsApp() {
   if (_isShuttingDown) return;
+
+  const {
+    default: makeWASocket,
+    useMultiFileAuthState,
+    DisconnectReason,
+    Browsers,
+    fetchLatestBaileysVersion
+  } = await import('@whiskeysockets/baileys');
 
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
   const { version, isLatest } = await fetchLatestBaileysVersion();

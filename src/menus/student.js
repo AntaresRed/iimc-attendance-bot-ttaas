@@ -60,7 +60,7 @@ async function processMessage(user, msgInfo, sendFn) {
               ? `❌ Could not find time labels in the image. Make sure the time axis is visible and not cropped.`
               : reason === 'OCR_TIMEOUT'
               ? `❌ OCR timed out. The image may be too complex. Try a cleaner screenshot.`
-              : formatter.formatOCRPreview([]);
+              : `⚠️ *Timetable Parsing Failed*\n\n${message ? `Error: ${message}\n\n` : ''}Could not extract schedule from the image.\nPlease ensure the image is clear and high-resolution.\n\nTry again or enter the schedule manually.`;
             await sendFn(jid, hint);
             return;
          }

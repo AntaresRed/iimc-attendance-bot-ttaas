@@ -172,7 +172,7 @@ function createDashboardServer() {
   app.get('/{*path}', (_req, res) =>
     res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-  app.listen(PORT, () => console.log(`[Dashboard] http://localhost:${PORT}`));
+  app.listen(PORT, '0.0.0.0', () => console.log(`[Dashboard] http://0.0.0.0:${PORT}`));
   return app;
 }
 

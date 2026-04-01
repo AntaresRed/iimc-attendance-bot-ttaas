@@ -7,6 +7,13 @@ const { welcomeMessage, registrationComplete } = require('./utils/formatter');
 
 let _sendFn = null;
 
+// ── Pre-registered users ──────────────────────────────────────────────────────
+// Add numbers here to skip the name prompt and register them automatically.
+// Format: 'countrycode+number@s.whatsapp.net': { name, role }
+const PRESET_USERS = {
+  '918830156905@s.whatsapp.net': { name: 'Antares', role: 'student' },
+};
+
 function initBot(sendFn) {
   _sendFn = sendFn;
 }
@@ -72,6 +79,18 @@ async function handleMessage(msgInfo) {
 
   // Fresh user registration
   if (!user) {
+    // ── Auto-register pre-known users without asking for a name ──────────────
+    const preset = PRESET_USERS[phone];
+    if (preset) {
+      const role = phone.replace('@s.whatsapp.net', '').endsWith(process.env.BOOTSTRAP_CR_PHONE)
+        ? 'superadmin' : preset.role;
+      db.upsertUser({ phone, name: preset.name, role, section_id: 1 });
+      db.clearConvState(phone);
+      const fmt = require('./utils/formatter');
+      await _sendFn(jid, fmt.registrationComplete(preset.name));
+      return;
+    }
+
     let conv = db.getConvState(phone);
     // Unregistered user sends an image → nudge them to register first (#24)
     if (msgInfo.imageMessage) {

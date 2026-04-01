@@ -794,29 +794,54 @@ async function loadBot(){
 function loadGuide() {
   const c = el('page-guide');
   c.innerHTML = `
-    <div class="card" style="max-width:800px; padding:30px">
-      <div class="card-title" style="font-size:1.3rem; margin-bottom:20px">📖 Admin Dashboard Guide</div>
+    <div class="card" style="max-width:850px; padding:35px; overflow-y:auto; max-height:calc(100vh - 120px)">
+      <div class="card-title" style="font-size:1.5rem; margin-bottom:24px; border-bottom:1px solid var(--border); padding-bottom:12px">
+        📖 Complete AttendanceBot System Manual
+      </div>
+
       <div style="font-size:0.95rem; line-height:1.7; color:var(--text2)">
-        <h4 style="color:var(--text1); margin-top:20px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">◉</span> Overview</h4>
-        <p>A high-level view of system health, active users, today's schedule, and overall attendance statistics. The bar chart compares present vs absent trends across all subjects.</p>
         
-        <h4 style="color:var(--text1); margin-top:24px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">👥</span> Users</h4>
-        <p>Manage all students registered with the bot. You can view their individual attendance progress, change their section, assign <strong>CR</strong> or <strong>Superadmin</strong> roles, or delete users entirely.</p>
-        
-        <h4 style="color:var(--text1); margin-top:24px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">📅</span> Timetables</h4>
-        <p>View the active timetable for any student. The bot automatically creates absent records exactly 1 minute before these scheduled class times and sends a WhatsApp prompt to the student.</p>
-        
-        <h4 style="color:var(--text1); margin-top:24px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">✅</span> Attendance Logs</h4>
-        <p>A detailed view of every single class session recorded for every user. You can manually edit a student's status (Present/Absent/Cancelled/Rescheduled), overriding what they replied on WhatsApp.</p>
-        
-        <h4 style="color:var(--text1); margin-top:24px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">🔄</span> Schedule Overrides</h4>
-        <p>View active class cancellations or rescheduled sessions created by CRs and Admins through WhatsApp. These overrides ensure the bot automatically suppresses prompts for cancelled classes.</p>
-        
-        <h4 style="color:var(--text1); margin-top:24px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">📋</span> Audit Log</h4>
-        <p>A secure, tamper-proof history of manual edits. If you or another admin change a student's attendance from this Dashboard, it is permanently logged here to prevent fraudulent or accidental changes.</p>
-        
-        <h4 style="color:var(--text1); margin-top:24px; margin-bottom:5px; display:flex; align-items:center; gap:8px"><span class="nav-icon">🤖</span> Bot Status & Backups</h4>
-        <p>Check if the WhatsApp bot is actively connected. Use the QR code to sign the bot in. You can securely download a compressed snapshot of the database or automatically push backups to GitHub to prevent data loss.</p>
+        <h3 style="color:var(--text1); margin-top:0;">1. End-to-End User Flow</h3>
+        <p>The system is built entirely around WhatsApp, meaning students never need an app. The basic lifecycle is:</p>
+        <ol style="margin-left: 20px; margin-bottom: 24px;">
+          <li style="margin-bottom:6px"><strong>Registration:</strong> A student messages the bot. It asks for their full name. From then on, their phone number is bound to their identity.</li>
+          <li style="margin-bottom:6px"><strong>Timetable OCR:</strong> The student sends an image of their IIMC timetable grid to the bot. The bot extracts the exact subjects, days, and times and saves it to their profile.</li>
+          <li style="margin-bottom:6px"><strong>Automated Prompts:</strong> Behind the scenes, the server checks the clock every 60 seconds. When any student's class is 1 minute away, it creates a blank <code>absent</code> record and sends them a WhatsApp message: <em>"Your {Subject} class is starting. Type 'present' if you are there."</em></li>
+          <li style="margin-bottom:6px"><strong>Logging:</strong> The student replies <code>present</code>, or perhaps <code>sick</code>. The bot instantly updates their database record, and you can see this live on the Overview page in this dashboard.</li>
+        </ol>
+
+        <h3 style="color:var(--text1); margin-top:32px;">2. User Roles & Capabilities</h3>
+        <p>There are three security tiers governed via WhatsApp (or editable in the <strong>Users</strong> tab of this dashboard):</p>
+        <ul style="margin-left: 20px; margin-bottom: 24px;">
+          <li style="margin-bottom:8px"><strong>Student:</strong> Can upload their timetable, check their personal attendance stats (<code>stats</code> command), and mark themselves present.</li>
+          <li style="margin-bottom:8px"><strong>Class Representative (CR):</strong> Assigned via this dashboard. Has access to the <code>menu</code>'s "Admin controls". A CR can cancel an upcoming class for their section or broadcast emergency messages to all Section members simultaneously.</li>
+          <li style="margin-bottom:8px"><strong>Superadmin:</strong> Reserved precisely for your phone number. Can create permanent overrides, broadcast to ALL sections globally, link WhatsApp groups to specific sections, and view total system logs.</li>
+        </ul>
+
+        <h3 style="color:var(--text1); margin-top:32px;">3. Managing Schedules & Overrides</h3>
+        <p>The most important part of keeping attendance accurate is handling class cancellations. If the professor cancels a class, the bot will still foolishly ask students for attendance unless told otherwise.</p>
+        <ul style="margin-left: 20px; margin-bottom: 24px;">
+          <li style="margin-bottom:8px"><strong>How to Cancel:</strong> A CR or Superadmin sends WhatsApp commands like <code>cancel macroeconomics today</code>.</li>
+          <li style="margin-bottom:8px"><strong>What Happens:</strong> The bot creates an <em>Override</em>. When the master clock runs every minute, it checks the schedule against Overrides. If a class is overridden, the bot intentionally skips sending attendance prompts and flags the session as <em>Cancelled</em>.</li>
+          <li style="margin-bottom:8px"><strong>View Overrides:</strong> Go to the <strong style="color:var(--text1)">🔄 Overrides</strong> tab to see all active cancellations created by CRs and instantly delete false ones.</li>
+        </ul>
+
+        <h3 style="color:var(--text1); margin-top:32px;">4. Admin Dashboard Moderation</h3>
+        <p>Your primary weapon is the <strong style="color:var(--text1)">✅ Attendance Logs</strong> tab. If a student forgot their phone or replied too late, they will default to <em>Absent</em>.</p>
+        <ul style="margin-left: 20px; margin-bottom: 24px;">
+          <li style="margin-bottom:8px"><strong>Manual Editing:</strong> Find the student, click <strong>✏️ Edit</strong>, and override them to <em>Present</em>.</li>
+          <li style="margin-bottom:8px"><strong>Audit Trail:</strong> Every manual change made on the dashboard is written to the <strong style="color:var(--text1)">📋 Audit Log</strong> in stone. You will always know who changed what, and from what to what.</li>
+          <li style="margin-bottom:8px"><strong>Clean Timetables:</strong> In the <strong style="color:var(--text1)">📅 Timetables</strong> tab, you can search broadly for anyone missing a timetable or forcefully delete corrupted messy timetables so the user is forced to re-upload.</li>
+        </ul>
+
+        <h3 style="color:var(--text1); margin-top:32px; color:var(--red)">5. Disaster Recovery & Backups</h3>
+        <p>If you lose the database, you lose everything. Use the <strong style="color:var(--text1)">🤖 Bot Status</strong> page securely:</p>
+        <ul style="margin-left: 20px; margin-bottom: 24px;">
+          <li style="margin-bottom:8px"><strong>Automatic GitHub Backups:</strong> At exactly 02:00 AM IST every night, the bot takes an atomic snapshot of the SQLite database, compresses it, and securely pushes it to your private GitHub repo. It only keeps the last 30 days.</li>
+          <li style="margin-bottom:8px"><strong>Manual Downloads:</strong> Click <strong>⬇ Download Backup</strong> at any time to instantly save a highly compressed local copy to your PC.</li>
+          <li style="margin-bottom:8px"><strong>Restoring Data:</strong> If the bot ever crashes and uninstalls, deploy a fresh copy, go to Bot Status, click <strong>📂 Restore from File</strong>, and upload the `.gz` backup file. The website will securely swap the database core and restart the application completely unharmed.</li>
+          <li style="margin-bottom:8px"><strong>Disconnections:</strong> Do NOT delete your WhatsApp account. If your phone battery dies and the bot disconnects, just come here, click <strong>⏏ Disconnect Bot</strong>, and simply point your camera at the new QR code to resume the system. You will lose absolutely zero data.</li>
+        </ul>
       </div>
     </div>
   `;

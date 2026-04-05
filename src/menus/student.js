@@ -66,8 +66,8 @@ function parseEntryLine(line) {
   const rawSubject = subjectTokens.join(' ').trim();
   if (!rawSubject) return null;
 
-  // Fuzzy-match against valid courses (reuse ocr module's list + resolver)
-  const { VALID_COURSES } = require('./ocr'); // already loaded
+  // Fuzzy-match against valid courses
+  const { VALID_COURSES } = require('../utils/ocr');
   const stringSimilarity = require('string-similarity');
   const best = stringSimilarity.findBestMatch(rawSubject, VALID_COURSES).bestMatch;
   const subject = best.rating >= 0.35 ? best.target : rawSubject;

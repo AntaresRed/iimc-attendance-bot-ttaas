@@ -36,7 +36,7 @@ async function checkAndFireClassPrompts() {
 
     for (const session of sessions) {
       const startMin = timeToMinutes(session.start_time);
-      if (Math.abs(nowMin - startMin) > 1) continue;
+      if (nowMin !== startMin) continue;  // fire exactly once at the start minute
 
       try {
         attendance.initSessionAttendance(user.id, { ...session, session_date: dateStr });

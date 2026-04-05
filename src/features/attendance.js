@@ -17,7 +17,7 @@ function markLiveAttendance(user, status) {
 
   // Check if already marked for this exact session (#26)
   const existing = db.getAttendanceRecord(user.id, session.session_date, session.start_time);
-  if (existing) return { ok: false, error: 'already_marked', session };
+  if (existing && existing.status === 'present') return { ok: false, error: 'already_marked', session };
 
   try {
     db.markAttendance({

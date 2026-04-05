@@ -19,7 +19,64 @@ async function downloadMedia(msgInfo) {
   return buffer;
 }
 
+// ── Timetable edit helpers ────────────────────────────────────────────────────
+
+const DAY_ABBR = { sun:0, sunday:0, mon:1, monday:1, tue:2, tuesday:2, wed:3, wednesday:3, thu:4, thursday:4, fri:5, friday:5, sat:6, saturday:6 };
+const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function formatEditMenu(entries) {
+  const sorted = [...entries].sort((a, b) => a.day_of_week !== b.day_of_week ? a.day_of_week - b.day_of_week : a.start_time.localeCompare(b.start_time));
+  const lines = sorted.map((e, i) =>
+    `${i + 1}. ${DAY_NAMES[e.day_of_week]}  ${e.start_time}–${e.end_time}  ${e.subject}`
+  ).join('\n');
+  return (
+    `✏️ *Edit Timetable* (${entries.length} entries)\n\n` +
+    `${lines}\n\n` +
+    `Commands:\n` +
+    `• *edit <n>* — replace an entry  (e.g. edit 2)\n` +
+    `• *delete <n>* — remove an entry  (e.g. delete 3)\n` +
+    `• *add* — add a new entry\n` +
+    `• *done* — preview and confirm\n` +
+    `• *cancel* — discard changes`
+  );
+}
+
+/**
+ * Parses a free-text entry line: "Mon 10:15 11:45 Strategic Brand Management"
+ * Returns a structured entry object or null if unparseable.
+ */
+function parseEntryLine(line) {
+  // Tokenise: first token = day, next two = times, rest = subject
+  const tokens = line.split(/\s+/);
+  if (tokens.length < 4) return null;
+
+  const [dayToken, startToken, endToken, ...subjectTokens] = tokens;
+  const dow = DAY_ABBR[dayToken.toLowerCase()];
+  if (dow === undefined) return null;
+
+  const normTime = t => {
+    const m = t.match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return null;
+    return `${m[1].padStart(2,'0')}:${m[2]}`;
+  };
+  const start_time = normTime(startToken);
+  const end_time   = normTime(endToken);
+  if (!start_time || !end_time) return null;
+
+  const rawSubject = subjectTokens.join(' ').trim();
+  if (!rawSubject) return null;
+
+  // Fuzzy-match against valid courses (reuse ocr module's list + resolver)
+  const { VALID_COURSES } = require('./ocr'); // already loaded
+  const stringSimilarity = require('string-similarity');
+  const best = stringSimilarity.findBestMatch(rawSubject, VALID_COURSES).bestMatch;
+  const subject = best.rating >= 0.35 ? best.target : rawSubject;
+
+  return { subject, day_of_week: dow, start_time, end_time };
+}
+
 async function processMessage(user, msgInfo, sendFn) {
+
   const { jid, text, imageMessage } = msgInfo;
   const lowerText = text.toLowerCase().trim();
   const phone = user.phone;
@@ -74,11 +131,11 @@ async function processMessage(user, msgInfo, sendFn) {
       return;
   }
 
-  // Intercept OCR confirmation
+  // ── OCR confirmation ─────────────────────────────────────────────────────────
   if (conv.state === 'student_confirm_ocr') {
+      const { entries } = conv.context;
+
       if (lowerText === 'confirm' || lowerText === 'yes') {
-          const { entries } = conv.context;
-          // Guard: don't save an empty entries list (#13)
           if (!entries || entries.length === 0) {
              db.clearConvState(phone);
              await sendFn(jid, `❌ No timetable data to save. Please upload your image again.`);
@@ -87,15 +144,118 @@ async function processMessage(user, msgInfo, sendFn) {
           timetable.saveParsedTimetable(user.id, entries);
           db.clearConvState(phone);
           const weekData = timetable.getWeeklySchedule(user.id);
-          const msg = `✅ Your personal timetable has been successfully saved! You'll now receive class reminders based on this schedule.\n\n` +
-                      formatter.formatWeeklySchedule(weekData);
-          await sendFn(jid, msg);
-      } else {
+          await sendFn(jid,
+            `✅ Your personal timetable has been successfully saved! You'll now receive class reminders based on this schedule.\n\n` +
+            formatter.formatWeeklySchedule(weekData));
+
+      } else if (lowerText === 'edit') {
+          db.setConvState(phone, 'student_edit_ocr', { entries });
+          await sendFn(jid, formatEditMenu(entries));
+
+      } else if (lowerText === 'retry') {
           db.clearConvState(phone);
-          await sendFn(jid, `❌ Timetable upload cancelled.`);
+          await sendFn(jid, `🔄 Upload cancelled. Send a clearer image with the caption *timetable* to try again.`);
+
+      } else {
+          await sendFn(jid,
+            `❓ Please reply:\n✅ *confirm* — save the timetable\n✏️ *edit* — change entries\n🔄 *retry* — upload a clearer image`);
       }
       return;
   }
+
+  // ── OCR edit menu — user is correcting individual entries ─────────────────────
+  if (conv.state === 'student_edit_ocr') {
+      let { entries } = conv.context;
+
+      if (lowerText === 'done' || lowerText === 'confirm') {
+          // Back to confirmation preview
+          db.setConvState(phone, 'student_confirm_ocr', { entries });
+          await sendFn(jid, formatter.formatOCRPreview(entries));
+          return;
+      }
+
+      if (lowerText === 'cancel') {
+          db.clearConvState(phone);
+          await sendFn(jid, `❌ Timetable edit cancelled. Send a new image with caption *timetable* to start over.`);
+          return;
+      }
+
+      // delete <n>
+      const delMatch = lowerText.match(/^delete\s+(\d+)$/);
+      if (delMatch) {
+          const idx = parseInt(delMatch[1], 10) - 1;
+          if (idx < 0 || idx >= entries.length) {
+              await sendFn(jid, `❌ Invalid entry number. Choose 1–${entries.length}.`);
+          } else {
+              entries = entries.filter((_, i) => i !== idx);
+              db.setConvState(phone, 'student_edit_ocr', { entries });
+              await sendFn(jid, `✅ Entry deleted.\n\n` + formatEditMenu(entries));
+          }
+          return;
+      }
+
+      // edit <n>  — prompt for replacement
+      const editMatch = lowerText.match(/^edit\s+(\d+)$/);
+      if (editMatch) {
+          const idx = parseInt(editMatch[1], 10) - 1;
+          if (idx < 0 || idx >= entries.length) {
+              await sendFn(jid, `❌ Invalid entry number. Choose 1–${entries.length}.`);
+          } else {
+              db.setConvState(phone, 'student_edit_ocr_input', { entries, editingIdx: idx });
+              const e = entries[idx];
+              const DAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][e.day_of_week];
+              await sendFn(jid,
+                `✏️ Editing entry ${idx + 1}:\n_${DAY} ${e.start_time}–${e.end_time} — ${e.subject}_\n\n` +
+                `Type the corrected entry in this format:\n` +
+                `*Day HH:MM HH:MM Subject*\n\n` +
+                `Example:\n_Mon 10:15 11:45 Strategic Brand Management_`);
+          }
+          return;
+      }
+
+      // add — prompt for new entry
+      if (lowerText === 'add') {
+          db.setConvState(phone, 'student_edit_ocr_input', { entries, editingIdx: null });
+          await sendFn(jid,
+            `➕ Type the new entry in this format:\n*Day HH:MM HH:MM Subject*\n\n` +
+            `Example:\n_Fri 14:30 16:00 Management Consulting_`);
+          return;
+      }
+
+      await sendFn(jid, formatEditMenu(entries));
+      return;
+  }
+
+  // ── OCR edit input — parsing a new / replacement entry ───────────────────────
+  if (conv.state === 'student_edit_ocr_input') {
+      let { entries, editingIdx } = conv.context;
+
+      if (lowerText === 'cancel') {
+          db.setConvState(phone, 'student_edit_ocr', { entries });
+          await sendFn(jid, `↩️ Cancelled. Back to edit menu.\n\n` + formatEditMenu(entries));
+          return;
+      }
+
+      const parsed = parseEntryLine(text.trim());
+      if (!parsed) {
+          await sendFn(jid,
+            `❌ Couldn't parse that. Use the format:\n*Day HH:MM HH:MM Subject*\n\n` +
+            `Example: _Mon 10:15 11:45 Strategic Brand Management_\n\nOr type *cancel* to go back.`);
+          return;
+      }
+
+      if (editingIdx !== null) {
+          entries = entries.map((e, i) => i === editingIdx ? parsed : e);
+          db.setConvState(phone, 'student_edit_ocr', { entries });
+          await sendFn(jid, `✅ Entry updated.\n\n` + formatEditMenu(entries));
+      } else {
+          entries = [...entries, parsed];
+          db.setConvState(phone, 'student_edit_ocr', { entries });
+          await sendFn(jid, `✅ Entry added.\n\n` + formatEditMenu(entries));
+      }
+      return;
+  }
+
 
   // ==== Interactive FSM states — MUST be checked before generic shortcuts ====
   // If the user is mid-flow (e.g. history_select_date), their "1" reply means
